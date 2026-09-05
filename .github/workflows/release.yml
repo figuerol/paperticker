@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to create or update, for example v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  TARGET: x86_64-unknown-linux-gnu
+  BINARIES: tickerd tickerc tickerctl
+
+jobs:
+  linux-x86_64:
+    name: Build Debian-compatible x86_64 release
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Use stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add "$TARGET"
+
+      - name: Test
+        run: cargo test --workspace --locked --target "$TARGET"
+
+      - name: Build release binaries
+        run: cargo build --workspace --release --locked --target "$TARGET"
+
+      - name: Package binaries
+        id: package
+        shell: bash
+        env:
+          # Via env, never inlined into the script: a tag name is attacker-
+          # supplied text (git happily accepts `v1.0";id;#`), and `${{ }}`
+          # interpolation would paste it into this shell before bash parses
+          # the line. As an env var it is data, not code.
+          RELEASE_TAG_INPUT: ${{ github.event.inputs.release_tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          release_tag="$RELEASE_TAG_INPUT"
+
+          # A tag name can't hold a newline, but a workflow_dispatch input
+          # can — and this value reaches $GITHUB_OUTPUT, where a second line
+          # would forge another step output. Pin it to a version tag shape.
+          if [[ ! "$release_tag" =~ ^v[0-9A-Za-z._-]+$ ]]; then
+            echo "refusing malformed release tag: ${release_tag@Q}" >&2
+            exit 1
+          fi
+
+          package_name="ticker-follow-${release_tag}-linux-x86_64"
+
+          mkdir -p "dist/${package_name}"
+          for binary in $BINARIES; do
+            install -m 755 "target/${TARGET}/release/${binary}" "dist/${package_name}/${binary}"
+          done
+
+          # Ship the docs (the keybindings table is worth having offline) and
+          # the license — MIT asks that the notice travel with copies of the
+          # software, and this archive is a distribution of it.
+          cp README.md "dist/${package_name}/README.md"
+          cp SECURITY.md "dist/${package_name}/SECURITY.md"
+          cp LICENSE "dist/${package_name}/LICENSE"
+
+          tar -C dist -czf "dist/${package_name}.tar.gz" "${package_name}"
+          sha256sum "dist/${package_name}.tar.gz" > "dist/${package_name}.tar.gz.sha256"
+
+          {
+            echo "release_tag=${release_tag}"
+            echo "archive=dist/${package_name}.tar.gz"
+            echo "checksum=dist/${package_name}.tar.gz.sha256"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          RELEASE_TAG: ${{ steps.package.outputs.release_tag }}
+          ARCHIVE: ${{ steps.package.outputs.archive }}
+          CHECKSUM: ${{ steps.package.outputs.checksum }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          printf -v notes '%s\n\n%s\n%s\n%s\n%s' \
+            'Linux x86_64 binaries for Debian-based distributions.' \
+            'Includes:' \
+            '- tickerd' \
+            '- tickerc' \
+            '- tickerctl'
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$ARCHIVE" "$CHECKSUM" --clobber
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            gh release create "$RELEASE_TAG" "$ARCHIVE" "$CHECKSUM" \
+              --target "$GITHUB_SHA" \
+              --title "$RELEASE_TAG" \
+              --notes "$notes"
+          else
+            gh release create "$RELEASE_TAG" "$ARCHIVE" "$CHECKSUM" \
+              --verify-tag \
+              --title "$RELEASE_TAG" \
+              --notes "$notes"
+          fi

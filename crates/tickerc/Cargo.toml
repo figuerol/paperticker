@@ -1,0 +1,16 @@
+[package]
+name = "tickerc"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+ticker-proto.workspace = true
+ticker-client.workspace = true
+anyhow.workspace = true
+chrono.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+ratatui = "0.29"
+crossterm = "0.28"

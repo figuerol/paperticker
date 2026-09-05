@@ -1,0 +1,28 @@
+# Rust build artifacts
+/target/
+**/*.rs.bk
+
+# Portfolio data — never commit. The live DB lives in $XDG_DATA_HOME
+# (~/.local/share/ticker-follow/portfolio.db) and is out of tree, but guard
+# against any local copy, backup, or the in-cwd fallback dir landing here.
+.ticker-follow/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+portfolio-backup.db
+
+# IPC socket fallback (when $XDG_RUNTIME_DIR is unset)
+*.sock
+
+# Local, machine-specific Claude Code settings (the shared skill in
+# .claude/skills/ stays tracked).
+.claude/settings.local.json
+
+# Local maintainer tooling and its scratch output
+/.local/
+
+# Env Variables
+.env
