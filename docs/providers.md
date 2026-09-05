@@ -26,6 +26,32 @@ outright — which is why there is exactly one here rather than a menu.
 `paperticker` is not affiliated with, endorsed by, or sponsored by any price
 data provider.
 
+### Only Alpha Vantage for now
+
+Only Alpha Vantage is supported right now. Others could be added later,
+depending on their terms of service — the bar is the one above: unattended
+scheduled fetching *and* an on-disk cache of the closes. There is no
+"unofficial" tier and no flag to opt into one. If you have a candidate whose
+terms clear both, open an issue with a link to them.
+
+### Removed providers
+
+A provider can also leave, if its terms change or it stops meeting the bar.
+When that happens its id stops resolving, and anything that still names it
+fails loudly rather than silently falling back to another source:
+
+- `tickerd` warns at startup — `configured provider is not recognized` — and
+  fetches nothing.
+- `tickerctl provider status` reports
+  `provider: unavailable — unknown provider "<id>"` rather than implying you
+  never chose one.
+- `tickerctl provider set <id>` refuses with
+  `unknown provider "<id>" — available: …` and exits `2`.
+
+A retired id is never reassigned to a different service, so a stale config can
+never be silently pointed somewhere new. Your portfolio and transaction history
+live in SQLite and are untouched by any of this; only the price source changes.
+
 ## Alpha Vantage
 
 The recommended option: a documented daily time-series API with a free key.

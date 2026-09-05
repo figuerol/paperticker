@@ -128,9 +128,8 @@ tickerctl provider status   # what's configured now
 | -------- | --- | --- |
 | [Alpha Vantage](https://www.alphavantage.co/support/#api-key) | free key | Documented daily time-series API. Free tier is rate-limited but ample, and permits the local cache. Personal, non-commercial use only. |
 
-There is one, on purpose. A provider is offered here only if its terms permit
-what this tool does — fetch on a schedule and cache the result on disk. Most
-free price sources fail one or both, so there is no menu.
+**Only Alpha Vantage is supported right now. Others could be added later,
+depending on their terms of service.**
 
 `paperticker` is not affiliated with, endorsed by, or sponsored by any price
 data provider.

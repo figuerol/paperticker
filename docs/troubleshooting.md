@@ -124,11 +124,19 @@ the shell where you run `tickerctl` — see
 
 ## The configured provider no longer exists
 
-`tickerctl provider status` reports `provider: none configured` even though
-`credentials.json` names one, and nothing fetches. That is a provider this
-project has since removed: the daemon says which and why at startup, and so
-does `tickerctl provider set <id>` — you get a real reason rather than "unknown
-provider". Removed ids are never reused. Pick another:
+```
+provider: unavailable — unknown provider "iexcloud"
+```
+
+`tickerctl provider status` names the id rather than reporting `none
+configured`, and nothing fetches. `tickerd` warns to match at startup
+(`configured provider is not recognized`), and `tickerctl provider set <id>`
+refuses with `unknown provider "<id>" — available: …`.
+
+Usually that is a typo in `credentials.json` or in `PAPERTICKER_PROVIDER`.
+Otherwise it is a provider this project has since withdrawn — retired ids are
+never reassigned, so nothing silently repoints at a different service. Either
+way, pick one from the catalog:
 
 ```sh
 tickerctl provider set
