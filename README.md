@@ -1,4 +1,4 @@
-# ticker-follow
+# paperticker
 
 A simulated stock portfolio for the terminal. Pulls daily close prices from a
 price data provider you choose, tracks paper buys/sells in SQLite, renders the
@@ -51,16 +51,16 @@ from a checkout.
 For x86_64 Linux machines with glibc 2.35 or newer (Debian 12+, Ubuntu 22.04+),
 download the latest release archive from:
 
-<https://github.com/figuerol/ticker-follow/releases/latest>
+<https://github.com/figuerol/paperticker/releases/latest>
 
-Download the `ticker-follow-*-linux-x86_64.tar.gz` asset from the release page.
+Download the `paperticker-*-linux-x86_64.tar.gz` asset from the release page.
 
 Unpack and install the binaries on your `PATH`:
 
 ```sh
-tar -xzf ticker-follow-*-linux-x86_64.tar.gz
+tar -xzf paperticker-*-linux-x86_64.tar.gz
 install -d ~/.local/bin
-install -m 755 ticker-follow-*-linux-x86_64/{tickerd,tickerc,tickerctl} ~/.local/bin/
+install -m 755 paperticker-*-linux-x86_64/{tickerd,tickerc,tickerctl} ~/.local/bin/
 ```
 
 Make sure `~/.local/bin` is on your `PATH`, then verify the install:
@@ -80,8 +80,8 @@ From a release archive:
 
 ```sh
 pkill tickerd
-tar -xzf ticker-follow-*-linux-x86_64.tar.gz
-install -m 755 ticker-follow-*-linux-x86_64/{tickerd,tickerc,tickerctl} ~/.local/bin/
+tar -xzf paperticker-*-linux-x86_64.tar.gz
+install -m 755 paperticker-*-linux-x86_64/{tickerd,tickerc,tickerctl} ~/.local/bin/
 tickerd &
 ```
 
@@ -95,8 +95,8 @@ tickerd &
 ```
 
 Your portfolio and your provider settings both survive an upgrade — they live
-outside the binaries, under `$XDG_DATA_HOME/ticker-follow/` and
-`$XDG_CONFIG_HOME/ticker-follow/`.
+outside the binaries, under `$XDG_DATA_HOME/paperticker/` and
+`$XDG_CONFIG_HOME/paperticker/`.
 
 ## Build from source
 
@@ -115,7 +115,7 @@ install -m 755 target/release/{tickerd,tickerc,tickerctl} ~/.local/bin/
 ## Price data providers
 
 **No provider is configured out of the box, and the daemon fetches nothing
-until you choose one.** That is deliberate: `ticker-follow` should not reach a
+until you choose one.** That is deliberate: `paperticker` should not reach a
 third-party service you did not pick.
 
 ```sh
@@ -132,11 +132,11 @@ There is one, on purpose. A provider is offered here only if its terms permit
 what this tool does — fetch on a schedule and cache the result on disk. Most
 free price sources fail one or both, so there is no menu.
 
-`ticker-follow` is not affiliated with, endorsed by, or sponsored by any price
+`paperticker` is not affiliated with, endorsed by, or sponsored by any price
 data provider.
 
 Your key is read from a hidden prompt and stored by the daemon under
-`$XDG_CONFIG_HOME/ticker-follow/` (`0600`, in a `0700` directory). There is
+`$XDG_CONFIG_HOME/paperticker/` (`0600`, in a `0700` directory). There is
 deliberately no `--key` flag; to keep the key out of the project's storage
 entirely, pass it in the daemon's environment instead.
 
@@ -298,11 +298,11 @@ Then type the symbol into the Trade form.
 Everything lives in a single SQLite file:
 
 ```
-~/.local/share/ticker-follow/portfolio.db
+~/.local/share/paperticker/portfolio.db
 ```
 
 Honors `$XDG_DATA_HOME` if set. The IPC socket is at
-`$XDG_RUNTIME_DIR/ticker-follow.sock`, or `/tmp/ticker-follow-<uid>/ticker-follow.sock`
+`$XDG_RUNTIME_DIR/paperticker.sock`, or `/tmp/paperticker-<uid>/paperticker.sock`
 as a fallback. Both the socket (`0600`) and the fallback directory (`0700`)
 are owner-only — see [SECURITY.md](SECURITY.md).
 
@@ -319,7 +319,7 @@ Two tables:
 
 ```sh
 # stop the daemon first (Ctrl-C or `pkill tickerd`)
-rm ~/.local/share/ticker-follow/portfolio.db
+rm ~/.local/share/paperticker/portfolio.db
 # restart — tickerd recreates the schema
 cargo run -p tickerd
 ```

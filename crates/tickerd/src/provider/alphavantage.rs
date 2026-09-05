@@ -38,7 +38,7 @@ const JITTER_MARGIN: f64 = 1.1;
 
 /// Overrides [`FREE_TIER_RPM`]. A number is the requests-per-minute your plan
 /// allows; `off` (or `unlimited`, or `0`) removes the pacing entirely.
-const RPM_ENV: &str = "TICKER_FOLLOW_ALPHAVANTAGE_RPM";
+const RPM_ENV: &str = "PAPERTICKER_ALPHAVANTAGE_RPM";
 
 /// Shared by every `AlphaVantage` in the process, and `None` when an operator
 /// has turned pacing off.
@@ -108,7 +108,7 @@ impl AlphaVantage {
     pub fn new(http: reqwest::Client, key: SecretString) -> Self {
         // Resolve the rate limit now rather than on the first fetch, so its
         // log line lands at daemon startup — that is where an operator who
-        // just set `TICKER_FOLLOW_ALPHAVANTAGE_RPM` looks to see it took, and
+        // just set `PAPERTICKER_ALPHAVANTAGE_RPM` looks to see it took, and
         // a portfolio with no holdings would otherwise never print it. The
         // initializer runs once however many times this is called.
         LazyLock::force(&RATE_LIMIT);

@@ -491,7 +491,7 @@ async fn provider_status(providers: &Providers) -> Response {
     let cfg = providers.config().lock().await;
     let selected = cfg.provider.as_deref().and_then(ticker_proto::provider::lookup);
     // A stored id that doesn't resolve is not "nothing configured" — usually
-    // a typo in the config file or in `TICKER_FOLLOW_PROVIDER`. `provider
+    // a typo in the config file or in `PAPERTICKER_PROVIDER`. `provider
     // status` is the first thing anyone runs when a fetch fails, so it has to
     // name the id rather than imply nothing was ever chosen.
     let unavailable = match (&selected, cfg.provider.as_deref()) {

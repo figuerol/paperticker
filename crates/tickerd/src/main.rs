@@ -30,16 +30,16 @@ async fn main() -> Result<()> {
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
         .init();
 
-    let data_dir = directories::ProjectDirs::from("", "", "ticker-follow")
+    let data_dir = directories::ProjectDirs::from("", "", "paperticker")
         .map(|d| d.data_dir().to_path_buf())
-        .unwrap_or_else(|| std::path::PathBuf::from(".ticker-follow"));
+        .unwrap_or_else(|| std::path::PathBuf::from(".paperticker"));
     std::fs::create_dir_all(&data_dir).context("creating data dir")?;
     let db_path = data_dir.join("portfolio.db");
     info!(?db_path, "opening database");
 
     let db = Arc::new(Mutex::new(Db::open(&db_path)?));
     let http = reqwest::Client::builder()
-        .user_agent("ticker-follow/0.1 (simulation)")
+        .user_agent("paperticker/0.1 (simulation)")
         .timeout(std::time::Duration::from_secs(15))
         .build()?;
 

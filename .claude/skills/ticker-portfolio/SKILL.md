@@ -181,8 +181,8 @@ the same:
 
 ## Reset / debug
 
-- SQLite file: `~/.local/share/ticker-follow/portfolio.db`
-  (or `$XDG_DATA_HOME/ticker-follow/portfolio.db`).
+- SQLite file: `~/.local/share/paperticker/portfolio.db`
+  (or `$XDG_DATA_HOME/paperticker/portfolio.db`).
   To wipe: stop the daemon, `rm` the file, restart.
 - `RUST_LOG=debug tickerd` for verbose daemon logging.
 - `tickerctl --socket /path/to.sock <cmd>` to override the socket path

@@ -11,7 +11,7 @@ oversell, a provider failure), `2` the command never reached the daemon.
 ## The daemon can't be reached
 
 ```
-tickerctl: connecting to /run/user/1000/ticker-follow.sock: No such file or directory
+tickerctl: connecting to /run/user/1000/paperticker.sock: No such file or directory
 ```
 
 Exit code `2`, with any connection error in place of that one: nothing is
@@ -29,7 +29,7 @@ database or fetch prices themselves — so nothing works until it is up.
 ## Another tickerd is already running
 
 ```
-another tickerd (PID 12345) is already listening on /run/user/1000/ticker-follow.sock
+another tickerd (PID 12345) is already listening on /run/user/1000/paperticker.sock
 ```
 
 One daemon per user is by design: one instance owns the database and the
@@ -66,6 +66,28 @@ Replace all three binaries and restart the daemon — see
 [Upgrading](../README.md#upgrading). Mixing a release archive with binaries
 from a checkout counts as skew too; check which comes first on your `PATH`.
 
+## Upgrading from ticker-follow
+
+```
+tickerctl: connecting to /run/user/1000/paperticker.sock: No such file or directory
+```
+
+The project was renamed to `paperticker`, and the paths were renamed with it:
+the socket, the config directory and the data directory all carry the new name.
+Nothing migrates automatically, so an upgraded daemon starts with no provider
+and an empty ledger until the old directories are moved across.
+
+Stop `tickerd`, then:
+
+```sh
+mv ~/.config/ticker-follow      ~/.config/paperticker
+mv ~/.local/share/ticker-follow ~/.local/share/paperticker
+```
+
+Any `TICKER_FOLLOW_*` variables in a shell profile or a systemd unit are now
+`PAPERTICKER_*` — the old names are ignored. The binaries themselves are
+unchanged: still `tickerd`, `tickerc` and `tickerctl`.
+
 ## No price data provider is configured
 
 ```
@@ -96,7 +118,7 @@ ready:     no
 The provider needs an API key and none is on file. Re-run `tickerctl provider
 set alphavantage`; the key is read from a hidden prompt (or piped stdin), never
 from a flag. If you supply it through the environment instead,
-`TICKER_FOLLOW_API_KEY` has to be set in **the daemon's** environment, not in
+`PAPERTICKER_API_KEY` has to be set in **the daemon's** environment, not in
 the shell where you run `tickerctl` — see
 [docs/providers.md](providers.md#keeping-the-key-out-of-this-projects-storage).
 

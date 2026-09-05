@@ -19,14 +19,14 @@ mod provider_cmd;
 #[derive(Parser)]
 #[command(
     name = "tickerctl",
-    about = "CLI client for the ticker-follow paper portfolio daemon (simulation only).",
-    long_about = "Scriptable CLI for the ticker-follow paper portfolio daemon.\n\
+    about = "CLI client for the paperticker portfolio daemon (simulation only).",
+    long_about = "Scriptable CLI for the paperticker portfolio daemon.\n\
                   All commands hit a local Unix socket — no real trades, no real money.",
     version,
 )]
 struct Cli {
     /// Override the daemon's socket path. Defaults to
-    /// $XDG_RUNTIME_DIR/ticker-follow.sock or /tmp/ticker-follow-<uid>/ticker-follow.sock.
+    /// $XDG_RUNTIME_DIR/paperticker.sock or /tmp/paperticker-<uid>/paperticker.sock.
     #[arg(long, global = true)]
     socket: Option<PathBuf>,
 

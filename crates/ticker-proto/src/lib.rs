@@ -11,12 +11,12 @@ pub mod secret;
 pub use provider::{ProviderInfo, ProviderStatus};
 pub use secret::SecretString;
 
-pub const DEFAULT_SOCK_NAME: &str = "ticker-follow.sock";
+pub const DEFAULT_SOCK_NAME: &str = "paperticker.sock";
 
 /// Default socket location. Honors `$XDG_RUNTIME_DIR`, falls back to `/tmp`.
 ///
 /// The fallback puts the socket *inside* a per-uid directory rather than
-/// naming it `/tmp/ticker-follow-<uid>.sock` directly. `bind()` creates a
+/// naming it `/tmp/paperticker-<uid>.sock` directly. `bind()` creates a
 /// socket at whatever the umask allows and it can only be tightened
 /// afterwards, so a socket sitting straight in world-traversable `/tmp` is
 /// briefly reachable by other local users. A `0700` parent removes that
@@ -32,7 +32,7 @@ pub fn default_socket_path() -> std::path::PathBuf {
 /// The private directory holding the socket when `$XDG_RUNTIME_DIR` is unset.
 /// `tickerd` is responsible for creating this `0700`; clients only read it.
 pub fn default_socket_fallback_dir() -> std::path::PathBuf {
-    std::path::PathBuf::from(format!("/tmp/ticker-follow-{}", current_uid()))
+    std::path::PathBuf::from(format!("/tmp/paperticker-{}", current_uid()))
 }
 
 /// Real uid of the calling process.

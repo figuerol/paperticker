@@ -1,6 +1,6 @@
 # Security
 
-`ticker-follow` is a **simulation**. It moves no money and places no trades;
+`paperticker` is a **simulation**. It moves no money and places no trades;
 the database is a paper ledger of made-up positions. That bounds the blast
 radius of most of what follows — with one exception worth stating plainly: it
 does hold one real credential, the API key for whichever price data provider
@@ -27,11 +27,11 @@ ledger. Access is controlled entirely by filesystem permissions:
 
 | Path | Mode |
 | ---- | ---- |
-| `$XDG_RUNTIME_DIR/ticker-follow.sock` | `0600`, inside a directory the login session already keeps private |
-| `/tmp/ticker-follow-<uid>/` (fallback) | `0700`, created by `tickerd` |
-| `/tmp/ticker-follow-<uid>/ticker-follow.sock` | `0600` |
-| `$XDG_CONFIG_HOME/ticker-follow/` | `0700`, created by `tickerd` |
-| `$XDG_CONFIG_HOME/ticker-follow/credentials.json` | `0600`, created by `tickerd` |
+| `$XDG_RUNTIME_DIR/paperticker.sock` | `0600`, inside a directory the login session already keeps private |
+| `/tmp/paperticker-<uid>/` (fallback) | `0700`, created by `tickerd` |
+| `/tmp/paperticker-<uid>/paperticker.sock` | `0600` |
+| `$XDG_CONFIG_HOME/paperticker/` | `0700`, created by `tickerd` |
+| `$XDG_CONFIG_HOME/paperticker/credentials.json` | `0600`, created by `tickerd` |
 
 The fallback socket lives *inside* a private directory rather than directly in
 `/tmp`. This is deliberate: `bind()` creates a socket at whatever the umask
@@ -79,7 +79,7 @@ The one real secret this project handles. How it is treated:
   left copies elsewhere on the heap.
 
 To keep the key out of this project's storage entirely, set
-`TICKER_FOLLOW_API_KEY` in the daemon's environment; it overrides the file and
+`PAPERTICKER_API_KEY` in the daemon's environment; it overrides the file and
 is never persisted.
 
 What this does *not* protect against: anything running as your uid can read
@@ -121,7 +121,7 @@ cache are both the design, and most free price sources fail one or both. There
 is no "unofficial" tier and no flag that opts an operator into one — if a
 provider is in the catalog, its terms permit what the daemon will do with it.
 
-`tickerd` sends an honest `User-Agent` (`ticker-follow/0.1 (simulation)`) and
+`tickerd` sends an honest `User-Agent` (`paperticker/0.1 (simulation)`) and
 does not impersonate a browser. It caches daily closes, so normal use
 re-fetches a ticker at most once a day — an explicit `refresh` always
 re-fetches.

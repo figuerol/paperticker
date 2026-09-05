@@ -3,7 +3,7 @@
 //! The daemon owns this the way it owns the database: clients ask it to store
 //! a key over the socket, they never write one to disk themselves.
 //!
-//! On-disk shape (`$XDG_CONFIG_HOME/ticker-follow/credentials.json`, or
+//! On-disk shape (`$XDG_CONFIG_HOME/paperticker/credentials.json`, or
 //! `~/.config/...`):
 //!
 //! ```json
@@ -24,9 +24,9 @@ use tracing::warn;
 
 /// Overrides the stored key without touching disk. For CI, headless hosts,
 /// and anyone keeping secrets in their own vault. Never persisted.
-const KEY_ENV: &str = "TICKER_FOLLOW_API_KEY";
+const KEY_ENV: &str = "PAPERTICKER_API_KEY";
 /// Overrides the stored provider selection.
-const PROVIDER_ENV: &str = "TICKER_FOLLOW_PROVIDER";
+const PROVIDER_ENV: &str = "PAPERTICKER_PROVIDER";
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Config {
@@ -42,11 +42,11 @@ pub struct Config {
 pub fn config_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("XDG_CONFIG_HOME") {
         if !dir.is_empty() {
-            return PathBuf::from(dir).join("ticker-follow");
+            return PathBuf::from(dir).join("paperticker");
         }
     }
     let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
-    PathBuf::from(home).join(".config").join("ticker-follow")
+    PathBuf::from(home).join(".config").join("paperticker")
 }
 
 pub fn config_path() -> PathBuf {
@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn an_unrecognized_provider_is_never_ready() {
-        // A typo in the config file or in TICKER_FOLLOW_PROVIDER must not
+        // A typo in the config file or in PAPERTICKER_PROVIDER must not
         // look fetchable, whatever key happens to sit next to it.
         let stale = Config {
             provider: Some("not-a-provider".into()),

@@ -62,7 +62,7 @@ jobs:
             exit 1
           fi
 
-          package_name="ticker-follow-${release_tag}-linux-x86_64"
+          package_name="paperticker-${release_tag}-linux-x86_64"
 
           mkdir -p "dist/${package_name}"
           for binary in $BINARIES; do

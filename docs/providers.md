@@ -5,7 +5,7 @@ what the provider's terms permit, why a refresh is paced, and where your API
 key lives. The terms are linked, not summarized — read them yourself.
 
 **No provider is configured out of the box, and the daemon fetches nothing
-until you choose one.** There is no silent default — `ticker-follow` should not
+until you choose one.** There is no silent default — `paperticker` should not
 reach a third-party service you did not pick.
 
 ```sh
@@ -17,13 +17,13 @@ tickerctl provider status   # what's configured now
 ## Choosing one
 
 A provider is only offered here if its terms permit what this tool actually
-does: **fetch on a schedule, and store the result.** `ticker-follow` refreshes
+does: **fetch on a schedule, and store the result.** `paperticker` refreshes
 automatically and writes every close into a local SQLite table; neither is an
 optimization that can be switched off. Plenty of free price sources fail one
 or both — the popular undocumented ones generally prohibit automated access
 outright — which is why there is exactly one here rather than a menu.
 
-`ticker-follow` is not affiliated with, endorsed by, or sponsored by any price
+`paperticker` is not affiliated with, endorsed by, or sponsored by any price
 data provider.
 
 ## Alpha Vantage
@@ -80,12 +80,12 @@ throughput. If you have one, tell the daemon what it allows and the pacing
 loosens to match:
 
 ```sh
-TICKER_FOLLOW_ALPHAVANTAGE_RPM=600 tickerd &   # requests per minute
-TICKER_FOLLOW_ALPHAVANTAGE_RPM=off tickerd &   # no pacing at all
+PAPERTICKER_ALPHAVANTAGE_RPM=600 tickerd &   # requests per minute
+PAPERTICKER_ALPHAVANTAGE_RPM=off tickerd &   # no pacing at all
 ```
 
 Read once at startup, in the daemon's environment — like
-`TICKER_FOLLOW_API_KEY`, it is never written to disk, and unlike a provider
+`PAPERTICKER_API_KEY`, it is never written to disk, and unlike a provider
 change it does not take effect on a running daemon. Under a systemd user unit
 put it in the same `EnvironmentFile` as your key.
 
@@ -132,9 +132,9 @@ printf '%s\n' "$MY_KEY" | tickerctl provider set alphavantage
 
 ### Keeping the key out of this project's storage
 
-`TICKER_FOLLOW_API_KEY` and `TICKER_FOLLOW_PROVIDER` override the stored file
+`PAPERTICKER_API_KEY` and `PAPERTICKER_PROVIDER` override the stored file
 and are never written to disk. Set them in the daemon's environment and
-`ticker-follow` never persists a credential at all — useful if you keep secrets
+`paperticker` never persists a credential at all — useful if you keep secrets
 in a password manager, a vault, or your own env file.
 
 **Why there is no `.env` support in the tool itself.** A `.env` is read relative
@@ -152,7 +152,7 @@ absolute, so it does not depend on where the daemon was started:
 
 ```ini
 [Service]
-EnvironmentFile=%h/.config/ticker-follow/env
+EnvironmentFile=%h/.config/paperticker/env
 ExecStart=%h/.local/bin/tickerd
 ```
 
