@@ -3,6 +3,7 @@
 use anyhow::{Context, Result};
 use rusqlite::{params, Connection};
 use ticker_proto::{HistoryPoint, TransactionRow};
+use tracing::warn;
 
 pub struct Db {
     conn: Connection,
@@ -15,9 +16,38 @@ pub struct PriceSnapshot {
     pub fetched_on: String, // YYYY-MM-DD
 }
 
+/// Take the ledger down to `0600`.
+///
+/// SQLite creates its file at the process umask and offers no way to pass a
+/// mode, so this can only tighten after the fact and leaves a window in
+/// principle. The `0700` data directory is what actually closes that window
+/// (`ensure_private_data_dir` in `main.rs`); this is the correct final mode,
+/// and it also repairs a database created before either check existed.
+///
+/// Best effort: a ledger that cannot be chmod'd is still a usable ledger, and
+/// refusing to start over it would be the worse failure.
+fn restrict_to_owner(path: &std::path::Path) {
+    use std::os::unix::fs::PermissionsExt;
+
+    let Ok(meta) = std::fs::metadata(path) else { return };
+    let mode = meta.permissions().mode() & 0o777;
+    if mode & 0o077 == 0 {
+        return;
+    }
+    match std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)) {
+        Ok(()) => warn!(
+            ?path,
+            mode = format!("{mode:04o}"),
+            "database was group/world readable; tightened to 0600"
+        ),
+        Err(e) => warn!(?path, ?e, "could not tighten database permissions"),
+    }
+}
+
 impl Db {
     pub fn open(path: &std::path::Path) -> Result<Self> {
         let conn = Connection::open(path).context("opening sqlite")?;
+        restrict_to_owner(path);
         conn.execute_batch(
             r#"
             CREATE TABLE IF NOT EXISTS transactions (
@@ -148,5 +178,37 @@ impl Db {
                 Ok(Some(PriceSnapshot { ticker, current_price, points, fetched_on }))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn opening_a_database_leaves_it_owner_only() {
+        // SQLite creates its file at the umask, so on a 0002 umask host the
+        // whole ledger lands world-readable unless `open` tightens it.
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("portfolio.db");
+        let _db = Db::open(&path).unwrap();
+
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "database mode {mode:04o}");
+    }
+
+    #[test]
+    fn opening_tightens_a_database_that_is_already_world_readable() {
+        // The upgrade path: a ledger created before this check existed.
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("portfolio.db");
+        drop(Db::open(&path).unwrap());
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o644)).unwrap();
+
+        let _db = Db::open(&path).unwrap();
+
+        let mode = std::fs::metadata(&path).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o600, "reopen left it at {mode:04o}");
     }
 }

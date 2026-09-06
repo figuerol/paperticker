@@ -365,11 +365,9 @@ impl App {
             (KeyCode::Char('s'), _) => self.start_trade(TradeSide::Sell),
             (KeyCode::Up, _) | (KeyCode::Char('k'), _) => self.move_cursor(-1)?,
             (KeyCode::Down, _) | (KeyCode::Char('j'), _) => self.move_cursor(1)?,
-            (KeyCode::Enter, _) | (KeyCode::Char('d'), _) => {
-                if self.tab == Tab::Portfolio {
-                    self.tab = Tab::Detail;
-                    self.maybe_load_detail()?;
-                }
+            (KeyCode::Enter, _) | (KeyCode::Char('d'), _) if self.tab == Tab::Portfolio => {
+                self.tab = Tab::Detail;
+                self.maybe_load_detail()?;
             }
             _ => {}
         }
@@ -463,14 +461,10 @@ impl App {
             KeyCode::Backspace => {
                 self.field_mut().pop();
             }
-            KeyCode::Char(c) => {
-                if !key.modifiers.contains(KeyModifiers::CONTROL) {
-                    let buf = self.field_mut();
-                    if c == ' ' {
-                        return Ok(());
-                    }
-                    buf.push(c);
-                }
+            // Space is dropped and Ctrl-chords never reach the buffer: no
+            // field here takes a space, and a stray Ctrl-key should not type.
+            KeyCode::Char(c) if c != ' ' && !key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.field_mut().push(c);
             }
             _ => {}
         }

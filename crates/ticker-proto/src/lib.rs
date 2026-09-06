@@ -24,7 +24,14 @@ pub const DEFAULT_SOCK_NAME: &str = "paperticker.sock";
 /// whatever mode it is born with.
 pub fn default_socket_path() -> std::path::PathBuf {
     if let Ok(dir) = std::env::var("XDG_RUNTIME_DIR") {
-        return std::path::PathBuf::from(dir).join(DEFAULT_SOCK_NAME);
+        // Empty means unset, as everywhere else in the XDG spec. Joining onto
+        // an empty path yields a *relative* one, which would put the socket in
+        // whatever directory the daemon happened to be started from — outside
+        // the private-parent guarantee above, and past the `/tmp` check that
+        // vets the fallback.
+        if !dir.is_empty() {
+            return std::path::PathBuf::from(dir).join(DEFAULT_SOCK_NAME);
+        }
     }
     default_socket_fallback_dir().join(DEFAULT_SOCK_NAME)
 }
@@ -223,6 +230,47 @@ pub fn bollinger_bands(closes: &[f64], window: usize, n_std: f64) -> Vec<BandPoi
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// `XDG_RUNTIME_DIR` is process-wide, so the tests that move it must not
+    /// run concurrently.
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    #[test]
+    fn an_empty_xdg_runtime_dir_is_treated_as_unset() {
+        // The bug: joining onto an empty path yields a *relative* one, so the
+        // daemon would bind its socket in whatever directory it was started
+        // from — outside the private parent that the fallback guarantees, and
+        // past the `/tmp` ownership check that vets it.
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let saved = std::env::var("XDG_RUNTIME_DIR").ok();
+
+        std::env::set_var("XDG_RUNTIME_DIR", "");
+        let path = default_socket_path();
+
+        match saved {
+            Some(v) => std::env::set_var("XDG_RUNTIME_DIR", v),
+            None => std::env::remove_var("XDG_RUNTIME_DIR"),
+        }
+
+        assert!(path.is_absolute(), "socket path went relative: {path:?}");
+        assert_eq!(path, default_socket_fallback_dir().join(DEFAULT_SOCK_NAME));
+    }
+
+    #[test]
+    fn a_set_xdg_runtime_dir_is_honored() {
+        let _guard = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let saved = std::env::var("XDG_RUNTIME_DIR").ok();
+
+        std::env::set_var("XDG_RUNTIME_DIR", "/run/user/4242");
+        let path = default_socket_path();
+
+        match saved {
+            Some(v) => std::env::set_var("XDG_RUNTIME_DIR", v),
+            None => std::env::remove_var("XDG_RUNTIME_DIR"),
+        }
+
+        assert_eq!(path, std::path::Path::new("/run/user/4242").join(DEFAULT_SOCK_NAME));
+    }
 
     #[test]
     fn bands_have_correct_shape() {

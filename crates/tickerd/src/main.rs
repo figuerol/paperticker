@@ -33,7 +33,7 @@ async fn main() -> Result<()> {
     let data_dir = directories::ProjectDirs::from("", "", "paperticker")
         .map(|d| d.data_dir().to_path_buf())
         .unwrap_or_else(|| std::path::PathBuf::from(".paperticker"));
-    std::fs::create_dir_all(&data_dir).context("creating data dir")?;
+    ensure_private_data_dir(&data_dir).context("creating data dir")?;
     let db_path = data_dir.join("portfolio.db");
     info!(?db_path, "opening database");
 
@@ -65,6 +65,13 @@ async fn main() -> Result<()> {
     }
     let providers = Providers::new(http, Arc::new(Mutex::new(cfg)));
 
+    // Claim the socket *before* fetching anything. Whoever owns the socket is
+    // the daemon; a second `tickerd &` has to find that out before it spends
+    // the provider's daily allowance on a refresh it has no business running,
+    // and before it writes into a database another process already owns.
+    let sock_path = ticker_proto::default_socket_path();
+    let listener = server::bind(&sock_path).await?;
+
     refresh_stale(&db, &providers).await;
 
     {
@@ -73,8 +80,34 @@ async fn main() -> Result<()> {
         tokio::spawn(async move { periodic_refresh_loop(db, providers).await });
     }
 
-    let sock_path = ticker_proto::default_socket_path();
-    server::serve(&sock_path, db, providers).await
+    server::serve(listener, &sock_path, db, providers).await
+}
+
+/// Create the data directory `0700`, and tighten it if it already exists with
+/// looser permissions.
+///
+/// The ledger is not a credential, but it is a complete record of what someone
+/// holds, and on a distro whose default umask is `0002` an unmoded
+/// `create_dir_all` leaves it group-writable. The private directory is also
+/// what makes the database file's own mode safe to set after the fact — see
+/// `Db::open`.
+fn ensure_private_data_dir(dir: &std::path::Path) -> Result<()> {
+    use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
+
+    std::fs::DirBuilder::new().recursive(true).mode(0o700).create(dir)?;
+
+    // `create` leaves an existing directory alone, so an install that predates
+    // this check keeps whatever mode it was born with until we fix it here.
+    let mode = std::fs::metadata(dir)?.permissions().mode() & 0o777;
+    if mode & 0o077 != 0 {
+        warn!(
+            ?dir,
+            mode = format!("{mode:04o}"),
+            "data directory was group/world accessible; tightening to 0700"
+        );
+        std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))?;
+    }
+    Ok(())
 }
 
 async fn refresh_stale(db: &Arc<Mutex<Db>>, providers: &Providers) {

@@ -297,7 +297,7 @@ fn draw_detail_header(frame: &mut Frame<'_>, area: Rect, h: &TickerHistory) {
         .split(area);
 
     card(frame, cols[0], "Price", &format!("${:.2}", h.current_price), Color::Cyan);
-    let updated = format!("{}", h.last_updated);
+    let updated = h.last_updated.to_string();
     card(frame, cols[1], "Updated", &updated, Color::Gray);
     if let Some(p) = &h.holding {
         card(frame, cols[2], "Shares", &format!("{:.4}", p.shares), Color::White);

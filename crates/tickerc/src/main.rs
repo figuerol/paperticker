@@ -38,7 +38,23 @@ fn main() -> Result<()> {
     run_tui(&mut app)
 }
 
+/// Put the terminal back before a panic prints.
+///
+/// Without this a panic anywhere in the draw or event path leaves the user in
+/// raw mode inside the alternate screen — no echo, no line editing, and the
+/// backtrace scrolling somewhere they cannot see. Release builds are
+/// `panic = "abort"`, so the hook is the only chance to run.
+fn install_panic_hook() {
+    let previous = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let _ = disable_raw_mode();
+        let _ = execute!(io::stdout(), LeaveAlternateScreen, DisableMouseCapture);
+        previous(info);
+    }));
+}
+
 fn run_tui(app: &mut App) -> Result<()> {
+    install_panic_hook();
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;

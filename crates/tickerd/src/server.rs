@@ -4,7 +4,7 @@ use std::os::unix::fs::{DirBuilderExt, PermissionsExt};
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{UnixListener, UnixStream};
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::Mutex;
@@ -17,11 +17,21 @@ use crate::config::Config;
 use crate::portfolio;
 use crate::provider::Providers;
 
-pub async fn serve(
-    sock_path: &std::path::Path,
-    db: Arc<Mutex<Db>>,
-    providers: Providers,
-) -> Result<()> {
+/// The largest request line the daemon will buffer, per line.
+///
+/// `lines()` on a raw socket grows its buffer until it meets a newline, so a
+/// client that never sends one is an out-of-memory bug waiting to happen —
+/// measured at ~1 MB of daemon RSS per MB sent. Every real request is a few
+/// hundred bytes (the longest carries an API key), so this is orders of
+/// magnitude of headroom and still a bound.
+const MAX_REQUEST_BYTES: usize = 64 * 1024;
+
+/// Claim the socket, or fail because another daemon already holds it.
+///
+/// Split out from [`serve`] so the caller can find out whether it is the
+/// daemon *before* doing any work that assumes it is — fetching prices, or
+/// writing to a database another process owns.
+pub async fn bind(sock_path: &std::path::Path) -> Result<UnixListener> {
     if let Some(parent) = sock_path.parent() {
         // Create with the mode baked in — `create_dir_all` would use the
         // umask and leave a window where the directory is world-traversable.
@@ -77,6 +87,16 @@ pub async fn serve(
     // if the socket somehow lands in a directory laxer than we expect.
     std::fs::set_permissions(sock_path, std::fs::Permissions::from_mode(0o600))
         .with_context(|| format!("chmod {}", sock_path.display()))?;
+    Ok(listener)
+}
+
+/// Accept clients until the process is stopped.
+pub async fn serve(
+    listener: UnixListener,
+    sock_path: &std::path::Path,
+    db: Arc<Mutex<Db>>,
+    providers: Providers,
+) -> Result<()> {
     info!(?sock_path, "tickerd listening");
 
     // Clean up the socket file on the ways a daemon actually gets stopped.
@@ -119,12 +139,41 @@ pub async fn serve(
 
 async fn handle(stream: UnixStream, db: Arc<Mutex<Db>>, providers: Providers) -> Result<()> {
     let (read, mut write) = stream.into_split();
-    let mut lines = BufReader::new(read).lines();
-    while let Some(line) = lines.next_line().await? {
+    let mut reader = BufReader::new(read);
+    let mut buf = Vec::new();
+
+    loop {
+        buf.clear();
+        // A fresh budget per line, so a long-lived connection (the TUI holds
+        // one open for its whole session) is limited per request rather than
+        // in total. Reading one byte past the cap is what tells the two cases
+        // apart: a full line that just fits, and a line still going.
+        let n = (&mut reader)
+            .take(MAX_REQUEST_BYTES as u64 + 1)
+            .read_until(b'\n', &mut buf)
+            .await?;
+        if n == 0 {
+            break; // EOF
+        }
+        if buf.len() > MAX_REQUEST_BYTES {
+            // No way to resynchronize: the rest of this line is still coming
+            // and we have already refused to hold it. Say so and hang up.
+            let resp = Response::Error {
+                message: format!("request exceeds {MAX_REQUEST_BYTES} bytes"),
+            };
+            let mut s = serde_json::to_string(&resp)?;
+            s.push('\n');
+            write.write_all(s.as_bytes()).await?;
+            write.flush().await?;
+            warn!("closing connection: request line over the size limit");
+            break;
+        }
+
+        let line = String::from_utf8_lossy(&buf);
         if line.trim().is_empty() {
             continue;
         }
-        let resp = match serde_json::from_str::<Request>(&line) {
+        let resp = match serde_json::from_str::<Request>(line.trim_end()) {
             Ok(req) => dispatch(req, &db, &providers).await,
             Err(e) => Response::Error { message: format!("bad request: {e}") },
         };
@@ -334,10 +383,9 @@ async fn dispatch(req: Request, db: &Arc<Mutex<Db>>, providers: &Providers) -> R
                 let g = db.lock().await;
                 g.price(&ticker).ok().flatten()
             };
-            let snap = if snap.is_some() {
-                snap.unwrap()
-            } else {
-                match providers.fetch(&ticker).await {
+            let snap = match snap {
+                Some(s) => s,
+                None => match providers.fetch(&ticker).await {
                     Ok(s) => {
                         if let Err(e) = db.lock().await.upsert_price(&s) {
                             return Response::Error { message: format!("db: {e}") };
@@ -345,7 +393,7 @@ async fn dispatch(req: Request, db: &Arc<Mutex<Db>>, providers: &Providers) -> R
                         s
                     }
                     Err(e) => return Response::Error { message: e.to_string() },
-                }
+                },
             };
             let p = price.unwrap_or(snap.current_price);
             if let Err(e) = db.lock().await.insert_transaction(&ticker, shares, p) {
@@ -679,6 +727,52 @@ mod tests {
         assert!(matches!(resp, Response::Error { .. }), "got: {resp:?}");
         let txns = db.lock().await.transactions(None).unwrap();
         assert_eq!(txns.len(), 1, "only the original buy should remain");
+    }
+
+    // ---- request framing ----
+
+    /// Drive `handle` over a socket pair: no filesystem, no listener, just the
+    /// read loop under test.
+    fn handler_pair() -> tokio::net::UnixStream {
+        let (client, server) = tokio::net::UnixStream::pair().unwrap();
+        let db = mem_db();
+        let providers = provider_stub();
+        tokio::spawn(async move {
+            let _ = handle(server, db, providers).await;
+        });
+        client
+    }
+
+    #[tokio::test]
+    async fn an_oversized_request_line_is_refused_rather_than_buffered() {
+        // The bug: `lines()` grows its buffer until it meets a newline, so a
+        // client that never sends one walks the daemon into an OOM.
+        let mut client = handler_pair();
+        let junk = vec![b'A'; MAX_REQUEST_BYTES + 1024];
+        // The handler stops reading and hangs up, so a write this large can
+        // legitimately fail partway — that is the bound working, not a fault.
+        let _ = client.write_all(&junk).await;
+
+        let mut reply = String::new();
+        BufReader::new(&mut client).read_line(&mut reply).await.unwrap();
+        assert!(reply.contains("exceeds"), "expected a size-limit error, got {reply:?}");
+    }
+
+    #[tokio::test]
+    async fn each_request_on_a_connection_gets_its_own_size_budget() {
+        // The regression a single stream-wide `take` would introduce: the TUI
+        // holds one connection for its whole session, so a budget that is not
+        // per line would cut it off after enough perfectly ordinary requests.
+        let mut client = handler_pair();
+        let one = b"{\"op\":\"ping\"}\n";
+        let n = MAX_REQUEST_BYTES / one.len() + 10; // comfortably past the cap in total
+        let mut reader = BufReader::new(&mut client);
+        for i in 0..n {
+            reader.get_mut().write_all(one).await.unwrap();
+            let mut reply = String::new();
+            reader.read_line(&mut reply).await.unwrap();
+            assert!(reply.contains("pong"), "request {i} of {n} got {reply:?}");
+        }
     }
 
     #[tokio::test]
