@@ -51,15 +51,15 @@ enum Cmd {
         /// Ticker symbol (e.g. AAPL, BRK-B).
         ticker: String,
     },
-    /// Simulate a paper buy. Price defaults to today's cached close.
+    /// Simulate a paper buy. Price defaults to the last cached close.
     Buy {
         ticker: String,
         shares: f64,
-        /// Override the fill price. Omit to use today's cached close.
+        /// Override the fill price. Omit to use the last cached close.
         #[arg(long)]
         price: Option<f64>,
     },
-    /// Simulate a paper sell. Always fills at today's cached close.
+    /// Simulate a paper sell. Always fills at the last cached close.
     Sell {
         ticker: String,
         shares: f64,
@@ -173,12 +173,12 @@ fn print_human(cmd: &Cmd, resp: &Response) -> Result<ExitCode> {
         (Cmd::Buy { ticker, shares, price }, Response::Ok) => {
             let p = match price {
                 Some(v) => format!("${v:.2}"),
-                None => "today's close".to_string(),
+                None => "the last cached close".to_string(),
             };
             println!("ok — bought {shares} {} @ {p} (simulated)", ticker.to_uppercase());
         }
         (Cmd::Sell { ticker, shares }, Response::Ok) => {
-            println!("ok — sold {shares} {} @ today's close (simulated)", ticker.to_uppercase());
+            println!("ok — sold {shares} {} @ the last cached close (simulated)", ticker.to_uppercase());
         }
         (Cmd::Refresh { force }, Response::Ok) => {
             if *force {

@@ -524,7 +524,7 @@ fn draw_trade(frame: &mut Frame<'_>, area: Rect, app: &App) {
     );
     if app.trade.side == TradeSide::Buy {
         let hint = if app.trade.price.is_empty() {
-            "(blank = today's close)".to_string()
+            "(blank = last cached close)".to_string()
         } else {
             app.trade.price.clone()
         };
@@ -537,7 +537,7 @@ fn draw_trade(frame: &mut Frame<'_>, area: Rect, app: &App) {
             editing,
         );
     } else {
-        let p = Paragraph::new("Sells execute at today's cached close.")
+        let p = Paragraph::new("Sells execute at the last cached close.")
             .style(Style::default().fg(Color::DarkGray));
         frame.render_widget(p, cols[3]);
     }

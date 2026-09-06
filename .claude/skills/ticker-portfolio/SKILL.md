@@ -71,20 +71,22 @@ filled yet) — don't report that as a bug.
 
 ### `tickerctl buy <TICKER> <SHARES> [--price N]`
 
-Simulates a paper buy. Without `--price`, fills at today's cached close.
+Simulates a paper buy. Without `--price`, fills at the last cached close
+— the most recent daily bar the provider returned, which mid-session is
+usually the *previous* session's close, not today's.
 
 ```sh
-tickerctl buy AAPL 10              # fill at today's close
+tickerctl buy AAPL 10              # fill at the last cached close
 tickerctl buy AAPL 10 --price 150  # user-specified fill
 ```
 
 **Always confirm before running.** Restate the order — ticker, shares,
-fill source ("today's close at $X.XX" or "$X user-specified"), resulting
+fill source ("last cached close at $X.XX" or "$X user-specified"), resulting
 cash impact — and wait for explicit "yes". Exit code 0 = success.
 
 ### `tickerctl sell <TICKER> <SHARES>`
 
-Simulates a paper sell at today's cached close. The daemon rejects sells
+Simulates a paper sell at the last cached close. The daemon rejects sells
 that exceed current holdings; don't try to bypass that. Same confirmation
 rule as buys.
 
@@ -157,7 +159,7 @@ This is a **simulation**, but the user treats it as a ledger. Treat it
 the same:
 
 1. Before any `buy` / `sell`, restate the order: ticker, shares, price
-   source (today's close vs. override), cash impact. Wait for explicit
+   source (last cached close vs. override), cash impact. Wait for explicit
    confirmation.
 2. Never invent prices — use the cache or what the user supplied.
 3. Never run `refresh` as a side effect of another command.

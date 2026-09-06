@@ -199,7 +199,7 @@ tickerctl ping
 tickerctl provider status
 tickerctl summary
 tickerctl summary --json | jq .total_value
-tickerctl buy AAPL 10               # fill at today's close
+tickerctl buy AAPL 10               # fill at the last cached close
 tickerctl buy AAPL 10 --price 150   # explicit fill price
 tickerctl sell AAPL 5
 tickerctl history AAPL
@@ -211,6 +211,14 @@ tickerctl provider set alphavantage # choose one (prompts for the key, hidden)
 tickerctl provider clear            # forget it, erase the stored key
 tickerctl --help                    # full surface
 ```
+
+A buy or sell with no `--price` fills at the cached close, which is the last
+daily bar the provider returned — not necessarily *today's*. The daemon only
+re-fetches a ticker whose snapshot isn't stamped with today's UTC date, and
+that date rolls over the evening before the US session, so a trade placed
+mid-session usually fills at the previous session's close. Run `tickerctl
+refresh --force` first if you want the freshest price the provider will give
+you (one request per holding, against your provider's daily cap).
 
 Exit codes: `0` = success, `1` = daemon returned an error (e.g. oversell —
 message on stderr), `2` = the command never reached the daemon — it couldn't
@@ -226,10 +234,21 @@ such as `provider set`.
 | `1` `2` `3` `4`             | Jump to Portfolio / Detail / Trade / Transactions |
 | `Tab` / `Shift-Tab`         | Cycle tabs forward / back                       |
 | `h` `l` `←` `→`             | Cycle tabs (vim-style)                          |
-| `r`                         | Refresh prices (force-fetches every holding)    |
+| `r`                         | Refresh holdings that don't have today's close  |
+| `R` (Shift-R)               | Force re-fetch of *every* holding               |
 | `b`                         | Open the Trade tab in BUY mode                  |
 | `s`                         | Open the Trade tab in SELL mode                 |
+| `Esc`                       | Clear the status line                           |
 | `q` / `Ctrl-C` / `Ctrl-Q`   | Quit                                            |
+
+`r` skips anything already stamped with today's UTC date, so pressing it
+repeatedly costs nothing once the day's prices are in. `R` ignores that check
+and spends one provider request per holding every time — it's the deliberately
+harder key. Both re-read the provider config first, so if you've just run
+`tickerctl provider set` in another terminal, `r` is the keypress that notices.
+
+Except for `Ctrl-C` / `Ctrl-Q`, which always quit, these apply in navigation
+mode only — on the Trade tab in EDIT mode the letters type into the form.
 
 ### Portfolio tab
 
@@ -247,6 +266,8 @@ Bollinger bands. Cyan is close, yellow is SMA, dark-grey lines are the bands.
 | --------------- | ----------------------------------------------------- |
 | `↑` `↓` `j` `k` | Cycle through holdings — the chart reloads each time |
 
+The cursor is shared with the Portfolio tab, so moving here moves there too.
+
 ### Trade tab (modal)
 
 The Trade tab is **modal**, vim-style. It opens in **NAV** when you land via
@@ -258,9 +279,12 @@ intent to trade).
 | Key                       | Action                                    |
 | ------------------------- | ----------------------------------------- |
 | `i` / `a` / `Enter`       | Enter EDIT mode for the focused field     |
-| `j` / `k`                 | Move between Ticker / Shares / Price      |
+| `j` `k` `↑` `↓`           | Move between Ticker / Shares / Price      |
 | `h` `l` `Tab` `Shift-Tab` | Switch tabs                               |
 | `Esc`                     | Back to Portfolio                         |
+
+Every global key above still works here — `q` quits, `1`-`4` jump, `r` / `R`
+refresh. Only EDIT mode swallows them.
 
 **EDIT mode** — typing fills the focused field:
 
@@ -271,6 +295,9 @@ intent to trade).
 | `Ctrl-←` / `Ctrl-→`     | Flip BUY ↔ SELL                     |
 | `Enter`                 | Submit the trade                    |
 | `Backspace`             | Delete a character                  |
+
+Space is ignored, as is any `Ctrl`-modified character — neither reaches the
+field buffer.
 
 The current mode is shown in the tab title (` NAV ` blue / ` EDIT ` magenta)
 and the banner under the title swaps shortcut sets accordingly.
@@ -351,10 +378,19 @@ don't use it for that.
 
 A project-level skill ships in `.claude/skills/ticker-portfolio/SKILL.md`.
 When you open Claude Code in this repo it auto-loads, so you can ask things
-like *"what's my portfolio look like?"* or *"buy 5 AAPL at today's close"* and
-Claude will drive `tickerctl` for you (with explicit confirmation before any
-buy/sell). The TUI is unaffected — Claude is just another client of the same
-daemon.
+like *"what's my portfolio look like?"*, *"how has AAPL moved this month?"* or
+*"buy 5 AAPL"* and Claude will drive `tickerctl` for you. The TUI is
+unaffected — Claude is just another client of the same daemon.
+
+Before any buy or sell, Claude restates the order — ticker, shares, the fill
+price and the date it was cached — and waits for you to confirm. Ask for a
+specific price (*"buy 5 AAPL at 150"*) and it passes `--price`; otherwise the
+fill is the last cached close, and Claude will tell you how old that is rather
+than implying it's live. Avoid phrasing an order as *"at today's close"*: there
+are no queued or market-on-close orders here, every trade fills immediately
+against the cache, and mid-session that number is the previous session's close.
+Claude won't refresh prices on its own — say so explicitly if you want a fetch
+before trading.
 
 ---
 

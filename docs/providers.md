@@ -99,11 +99,10 @@ polite rate — check the current limits on your [account
 dashboard](https://www.alphavantage.co/support/#support), since they are theirs
 to change.
 
-### If you pay for a higher rate
+### If you subscribe to a higher rate
 
-Alpha Vantage's rate-limit message suggests a premium plan for higher
-throughput. If you have one, tell the daemon what it allows and the pacing
-loosens to match:
+If your plan allows more than the free tier, tell the daemon what it allows
+and the pacing loosens to match:
 
 ```sh
 PAPERTICKER_ALPHAVANTAGE_RPM=600 tickerd &   # requests per minute
