@@ -199,7 +199,7 @@ tickerctl ping
 tickerctl provider status
 tickerctl summary
 tickerctl summary --json | jq .total_value
-tickerctl buy AAPL 10               # fill at today's close
+tickerctl buy AAPL 10               # fill at the last cached close
 tickerctl buy AAPL 10 --price 150   # explicit fill price
 tickerctl sell AAPL 5
 tickerctl history AAPL
@@ -211,6 +211,14 @@ tickerctl provider set alphavantage # choose one (prompts for the key, hidden)
 tickerctl provider clear            # forget it, erase the stored key
 tickerctl --help                    # full surface
 ```
+
+A buy or sell with no `--price` fills at the cached close, which is the last
+daily bar the provider returned — not necessarily *today's*. The daemon only
+re-fetches a ticker whose snapshot isn't stamped with today's UTC date, and
+that date rolls over the evening before the US session, so a trade placed
+mid-session usually fills at the previous session's close. Run `tickerctl
+refresh --force` first if you want the freshest price the provider will give
+you (one request per holding, against your provider's daily cap).
 
 Exit codes: `0` = success, `1` = daemon returned an error (e.g. oversell —
 message on stderr), `2` = the command never reached the daemon — it couldn't
