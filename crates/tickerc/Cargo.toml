@@ -12,5 +12,5 @@ anyhow.workspace = true
 chrono.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-ratatui = "0.29"
+ratatui = "0.30"
 crossterm = "0.28"
