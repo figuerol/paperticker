@@ -50,7 +50,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # Deliberately not continue-on-error: on these triggers a failure means
       # a real advisory against the committed Cargo.lock, which should go red.
