@@ -1,0 +1,22 @@
+version: 2
+
+updates:
+  # Cargo.lock is committed and every build runs `--locked`, so a dependency
+  # only moves when a pull request moves it. Monthly keeps that deliberate
+  # without turning a spare-time project into a review queue.
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR for the routine patch churn; anything that changes a major or
+      # minor version still arrives on its own, where it can be read.
+      patch-updates:
+        update-types: ["patch"]
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3

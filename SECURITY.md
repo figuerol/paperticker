@@ -32,6 +32,8 @@ ledger. Access is controlled entirely by filesystem permissions:
 | `/tmp/paperticker-<uid>/paperticker.sock` | `0600` |
 | `$XDG_CONFIG_HOME/paperticker/` | `0700`, created by `tickerd` |
 | `$XDG_CONFIG_HOME/paperticker/credentials.json` | `0600`, created by `tickerd` |
+| `$XDG_DATA_HOME/paperticker/` | `0700`, created by `tickerd` |
+| `$XDG_DATA_HOME/paperticker/portfolio.db` | `0600`, set by `tickerd` on open |
 
 The fallback socket lives *inside* a private directory rather than directly in
 `/tmp`. This is deliberate: `bind()` creates a socket at whatever the umask
@@ -46,6 +48,11 @@ Consequences worth being explicit about:
 - **A local attacker running as your uid has full access.** Same-uid isolation
   is not something Unix permissions provide, and this project does not attempt
   it. Anything running as you can already read the database file directly.
+  Other users cannot: the ledger is a complete record of what you hold, so it
+  is kept `0600` in a `0700` directory like the credentials beside it. SQLite
+  takes no mode argument, so `tickerd` tightens the file after opening it —
+  the private directory is what closes the window, and a database created by
+  an older build is repaired on the next start.
 - **`root` has full access.** As always.
 - **Multi-user machines are the case that matters.** On a single-user laptop
   the boundary is mostly theoretical.
@@ -97,7 +104,12 @@ trust model above.
   `NaN` explicitly, since every `NaN` comparison is false and a naive
   `s <= 0.0` would let it through.
 - **Requests** are newline-delimited JSON parsed by `serde`; a malformed line
-  produces an error response rather than terminating the connection.
+  produces an error response rather than terminating the connection. A single
+  request is capped at 64 KiB — without a bound, a client that opens a line
+  and never closes it grows the daemon's buffer until the process dies. That
+  cap is per request, not per connection, so a long-lived client is unaffected.
+  Oversized lines get an error and the connection closes, since there is no way
+  to resynchronize mid-line.
 
 Prices are *not* validated beyond parsing, from any provider — a wrong number
 upstream becomes a wrong number in your paper portfolio. The providers warrant
@@ -133,6 +145,8 @@ providers, to your account.
 ## Dependencies
 
 All dependencies come from crates.io and are pinned by `Cargo.lock`, which is
-committed. Release builds run `cargo test --locked` and `cargo build --locked`,
-so a release cannot silently pick up a different dependency tree. No crate in
+committed. CI runs `cargo test --locked` and `cargo clippy --locked` on every
+push and pull request, and release builds run `cargo test --locked` and
+`cargo build --locked`, so neither a merge nor a release can silently pick up
+a different dependency tree. No crate in
 the workspace is published (`publish = false`).

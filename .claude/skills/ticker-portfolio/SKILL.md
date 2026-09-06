@@ -59,7 +59,8 @@ the user only wants the position list.
 
 6 months of daily closes + 20-day SMA + ±2σ Bollinger bands for one
 ticker. Human output shows the last ~10 days as a table; `--json` returns
-all 120-ish points and bands aligned by index.
+every cached point and its band, aligned by index (Alpha Vantage returns
+about 100 sessions).
 
 ```sh
 tickerctl history AAPL

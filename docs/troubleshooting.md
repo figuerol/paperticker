@@ -110,7 +110,7 @@ terms commit you to.
 ## The provider is selected but not ready
 
 ```
-provider:  Alpha Vantage (official)
+provider:  Alpha Vantage
 api key:   not set
 ready:     no
 ```
@@ -162,8 +162,8 @@ bodies, so they reach you as that provider's own wording, prefixed
   `--force` (and `R` in the TUI) re-fetches everything, spending one request
   per holding every time — that is the usual way a day's allowance disappears.
   Wait for the day to roll over, or subscribe to a plan with a higher
-  allowance; see [If you pay for a higher
-  rate](providers.md#if-you-pay-for-a-higher-rate).
+  allowance; see [If you subscribe to a higher
+  rate](providers.md#if-you-subscribe-to-a-higher-rate).
 - **Invalid key.** Check `tickerctl provider status`, then re-enter the key
   with `tickerctl provider set alphavantage`.
 

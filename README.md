@@ -329,8 +329,9 @@ Everything lives in a single SQLite file:
 
 Honors `$XDG_DATA_HOME` if set. The IPC socket is at
 `$XDG_RUNTIME_DIR/paperticker.sock`, or `/tmp/paperticker-<uid>/paperticker.sock`
-as a fallback. Both the socket (`0600`) and the fallback directory (`0700`)
-are owner-only — see [SECURITY.md](SECURITY.md).
+as a fallback. The database (`0600`), its directory (`0700`), the socket
+(`0600`) and the fallback socket directory (`0700`) are all owner-only — see
+[SECURITY.md](SECURITY.md).
 
 Two tables:
 
