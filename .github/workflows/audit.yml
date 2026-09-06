@@ -1,0 +1,60 @@
+name: Audit
+
+# Advisories are mostly time-based, not diff-based: one usually appears because
+# the world learned something, not because a pull request changed anything.
+# Running this on every pull request meant a single advisory in a transitive
+# dependency turned every open PR red at once — including ones that changed
+# nothing but an action version. Contributors cannot act on that, and it trains
+# everyone to ignore a red check.
+#
+# So: on a schedule, on anything that actually moves the dependency tree
+# (including a pull request that does), and on demand. A dependency bump still
+# gets audited before it lands, which is the case where the check really is
+# about the diff.
+#
+# The two `paths` lists are duplicated on purpose — GitHub Actions does not
+# support YAML anchors, so an alias here would silently disable the filter.
+# Keep them in step.
+on:
+  schedule:
+    # Mondays, early. An odd minute so it isn't queued with everyone else's.
+    - cron: "17 6 * * 1"
+  push:
+    branches: ["main"]
+    paths:
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - ".github/workflows/audit.yml"
+  pull_request:
+    paths:
+      - "**/Cargo.toml"
+      - "**/Cargo.lock"
+      - ".github/workflows/audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Dependency advisories
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      # Reporting findings as check annotations, and opening an issue for one
+      # found on a scheduled run, both need more than the read-only default.
+      # A pull request from a fork gets a read-only token regardless of what
+      # is asked for here; the action degrades to plain log output there.
+      checks: write
+      issues: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      # Deliberately not continue-on-error: on these triggers a failure means
+      # a real advisory against the committed Cargo.lock, which should go red.
+      - name: Audit
+        uses: rustsec/audit-check@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}

@@ -53,26 +53,3 @@ jobs:
 
       - name: Clippy
         run: cargo clippy --workspace --locked --all-targets -- -D warnings
-
-  # Advisory: a new advisory against a pinned dependency is worth knowing about
-  # on a schedule, but it is not a reason to fail an unrelated pull request —
-  # nothing in the diff caused it, and nothing in the diff can fix it.
-  audit:
-    name: Dependency advisories (advisory)
-    runs-on: ubuntu-22.04
-    continue-on-error: true
-    permissions:
-      contents: read
-      # The action reports findings as check annotations, and opens an issue
-      # for one found on a scheduled run.
-      checks: write
-      issues: write
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Audit
-        uses: rustsec/audit-check@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
