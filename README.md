@@ -234,10 +234,21 @@ such as `provider set`.
 | `1` `2` `3` `4`             | Jump to Portfolio / Detail / Trade / Transactions |
 | `Tab` / `Shift-Tab`         | Cycle tabs forward / back                       |
 | `h` `l` `←` `→`             | Cycle tabs (vim-style)                          |
-| `r`                         | Refresh prices (force-fetches every holding)    |
+| `r`                         | Refresh holdings that don't have today's close  |
+| `R` (Shift-R)               | Force re-fetch of *every* holding               |
 | `b`                         | Open the Trade tab in BUY mode                  |
 | `s`                         | Open the Trade tab in SELL mode                 |
+| `Esc`                       | Clear the status line                           |
 | `q` / `Ctrl-C` / `Ctrl-Q`   | Quit                                            |
+
+`r` skips anything already stamped with today's UTC date, so pressing it
+repeatedly costs nothing once the day's prices are in. `R` ignores that check
+and spends one provider request per holding every time — it's the deliberately
+harder key. Both re-read the provider config first, so if you've just run
+`tickerctl provider set` in another terminal, `r` is the keypress that notices.
+
+Except for `Ctrl-C` / `Ctrl-Q`, which always quit, these apply in navigation
+mode only — on the Trade tab in EDIT mode the letters type into the form.
 
 ### Portfolio tab
 
@@ -255,6 +266,8 @@ Bollinger bands. Cyan is close, yellow is SMA, dark-grey lines are the bands.
 | --------------- | ----------------------------------------------------- |
 | `↑` `↓` `j` `k` | Cycle through holdings — the chart reloads each time |
 
+The cursor is shared with the Portfolio tab, so moving here moves there too.
+
 ### Trade tab (modal)
 
 The Trade tab is **modal**, vim-style. It opens in **NAV** when you land via
@@ -266,9 +279,12 @@ intent to trade).
 | Key                       | Action                                    |
 | ------------------------- | ----------------------------------------- |
 | `i` / `a` / `Enter`       | Enter EDIT mode for the focused field     |
-| `j` / `k`                 | Move between Ticker / Shares / Price      |
+| `j` `k` `↑` `↓`           | Move between Ticker / Shares / Price      |
 | `h` `l` `Tab` `Shift-Tab` | Switch tabs                               |
 | `Esc`                     | Back to Portfolio                         |
+
+Every global key above still works here — `q` quits, `1`-`4` jump, `r` / `R`
+refresh. Only EDIT mode swallows them.
 
 **EDIT mode** — typing fills the focused field:
 
@@ -279,6 +295,9 @@ intent to trade).
 | `Ctrl-←` / `Ctrl-→`     | Flip BUY ↔ SELL                     |
 | `Enter`                 | Submit the trade                    |
 | `Backspace`             | Delete a character                  |
+
+Space is ignored, as is any `Ctrl`-modified character — neither reaches the
+field buffer.
 
 The current mode is shown in the tab title (` NAV ` blue / ` EDIT ` magenta)
 and the banner under the title swaps shortcut sets accordingly.
