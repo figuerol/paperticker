@@ -378,10 +378,19 @@ don't use it for that.
 
 A project-level skill ships in `.claude/skills/ticker-portfolio/SKILL.md`.
 When you open Claude Code in this repo it auto-loads, so you can ask things
-like *"what's my portfolio look like?"* or *"buy 5 AAPL at today's close"* and
-Claude will drive `tickerctl` for you (with explicit confirmation before any
-buy/sell). The TUI is unaffected — Claude is just another client of the same
-daemon.
+like *"what's my portfolio look like?"*, *"how has AAPL moved this month?"* or
+*"buy 5 AAPL"* and Claude will drive `tickerctl` for you. The TUI is
+unaffected — Claude is just another client of the same daemon.
+
+Before any buy or sell, Claude restates the order — ticker, shares, the fill
+price and the date it was cached — and waits for you to confirm. Ask for a
+specific price (*"buy 5 AAPL at 150"*) and it passes `--price`; otherwise the
+fill is the last cached close, and Claude will tell you how old that is rather
+than implying it's live. Avoid phrasing an order as *"at today's close"*: there
+are no queued or market-on-close orders here, every trade fills immediately
+against the cache, and mid-session that number is the previous session's close.
+Claude won't refresh prices on its own — say so explicitly if you want a fetch
+before trading.
 
 ---
 
